@@ -1,4 +1,4 @@
-
+# Docker Commands:
 
 1. Build an image from the Dockerfile in the current directory and tag the image
 
