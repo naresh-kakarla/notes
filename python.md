@@ -6,6 +6,8 @@
 - [Property and CachedProperty](#property-and-cachedproperty)
 - [Context Manager](#context-manager)
 - [Multithreading](#multithreading)
+- [Thread Deadlock](#thread-deadlock)
+- [Closure and Scope](#closure-and-scope)
 
 
 ## Descriptors
@@ -261,6 +263,137 @@ for thread in threads: thread.start()
 for thread in threads: thread.join()
 
 ```
+
+## Thread Deadlock
+
+Thread deadlock is a situation where two or more threads are waiting indefinitely for resources (usually locks) held by each other — causing all of them to halt forever.
+
+**Example**
+
+- Thread A locks resource 1 and waits for resource 2.
+
+- Thread B locks resource 2 and waits for resource 1.
+   Neither thread can proceed — they’re stuck forever. That’s a deadlock.
+
+
+**When Does Deadlock Happen?**
+
+1. Manual Locking Without Release -> Forgetting to call lock.release() after lock.acquire().
+   ```
+   lock = threading.Lock()
+
+   def task():
+    lock.acquire()
+    # forgot lock.release()
+
+   ```
+
+2. Multiple Locks in Opposite Order -> One thread acquires lock1 → lock2, another thread acquires lock2 → lock1.
+
+   ```
+   lock1 = threading.Lock()
+   lock2 = threading.Lock()
+   
+   def thread1():
+       with lock1:
+           time.sleep(1)
+           with lock2:
+               pass
+   
+   def thread2():
+       with lock2:
+           time.sleep(1)
+           with lock1:
+               pass
+
+   ```
+   Thread 1 locks lock1 and waits for lock2
+   Thread 2 locks lock2 and waits for lock1
+   Both wait forever = Deadlock
+
+3. Circular Wait -> Each thread is holding one lock and waiting for another — leading to a wait cycle.
+   
+
+**How to Prevent Thread Deadlocks**
+
+**1. Use with Statement (Context Manager)**
+
+Automatically handles acquiring and releasing locks.
+
+```
+with lock:
+    # safe block
+
+```
+
+**2. Acquire Locks in a Fixed Global Order**
+
+If multiple locks are needed, acquire them in the same order (e.g., lock1 → lock2) across all threads.
+
+**3. Use acquire(timeout=...)**
+Avoid waiting forever:
+
+```
+if lock.acquire(timeout=1):
+    try:
+        # safe work
+    finally:
+        lock.release()
+
+```
+
+**4. Use Higher-Level Tools**
+- threading.RLock() – when the same thread may need to acquire the same lock multiple times.
+
+- threading.Semaphore() – limits concurrent access.
+
+- queue.Queue() – thread-safe data sharing without locking.
+
+## Closure and Scope
+
+**Closure** 
+- A function is defined inside another function (an inner function).
+
+- The outer function returns the inner function.
+
+- The inner function remembers the variables from the outer function even after the outer function has finished execution.
+
+A closure means a function "remembers its environment" where it was created — not just the code but also the variables around it.
+
+**Example:**
+
+```
+def outer(msg):
+    def inner():
+        print("Message:", msg)  # msg comes from outer
+    return inner
+
+func = outer("Hello")
+func()  # Output: Message: Hello
+
+```
+
+Even though outer is done, inner() remembers msg = "Hello" — that's a closure.
+
+**Scope (LEGB Rule)**
+
+Python uses LEGB rule to resolve variable names:
+
+|Scope   Level |	Meaning | Example|
+|--------------|	------- |--------|
+|L|	Local|	Inside current function|
+|E| Enclosing	|In enclosing function (if nested)|
+|G|Global|	At the top level of the module
+|B|Built-in|	Keywords like len, print|
+
+
+
+
+
+
+
+
+
 
 
 
