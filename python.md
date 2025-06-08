@@ -9,7 +9,8 @@
 - [Thread Deadlock](#thread-deadlock)
 - [Closure and Scope](#closure-and-scope)
 - [Decorator](#decorator)
-- Generators and Iterators(#generators-and-iterators)
+- [Generators and Iterators](#generators-and-iterators)
+- [Meta Class](#meta-class)
   
 
 ## Descriptors
@@ -564,6 +565,101 @@ print(next(gen))          # Output: 2
 print(next(gen))          # Output: 3
 # next(gen) now raises StopIteration
 ```
+
+## Meta Class
+A metaclass in Python is a "class of a class" — it defines how a class behaves when it's created.
+Just like classes define how objects are created, metaclasses define how classes themselves are created.
+
+By default, Python uses the built-in type metaclass to create classes. But if we want to customize the behavior of class creation — like logging, modifying attributes, enforcing rules, or automatically injecting methods — we can create a custom metaclass by subclassing type.
+
+`Metaclass → creates → Class → creates → Object`
+
+Then, we assign it to a class using the metaclass attribute:
+
+```
+class MyClass(metaclass=MyMeta):
+    ...
+
+```
+
+Now, MyMeta.__new__ or MyMeta.__init__ will be triggered when MyClass is being created.
+
+**Example**
+```
+class MyMeta(type):
+    def __new__(cls, name, bases, dct):
+        print(f"Creating class {name}")
+        dct['greeting'] = lambda self: "Hello from metaclass!"
+        return super().__new__(cls, name, bases, dct)
+
+class MyClass(metaclass=MyMeta):
+    pass
+
+obj = MyClass()
+print(obj.greeting())
+```
+
+- class_name `->` "MyClass":
+  The name of the class you're creating (just like writing class MyClass:).
+
+- bases `->` () (Empty Tuple):
+  This means no base classes (i.e., it inherits from object by default).
+  You could also pass a base class like (BaseClass,).
+
+- attrs `->` {} (Empty Dict):
+  This is a dictionary of attributes/methods you want the class to have.
+  You're not adding anything, so it's an empty class.
+
+
+## Coroutines and asyncio
+### Coroutines:
+- A coroutine is a special kind of function that can pause its execution before reaching the end, yield control back to the caller, and be resumed later.
+- It allows writing asynchronous, non-blocking code where you can wait for some operation (like I/O) without blocking the whole program.
+- In Python, coroutines are defined using async def and use await to pause for async operations.
+
+**Why use coroutines?**
+- To improve efficiency, especially for I/O-bound tasks (e.g., network calls, file I/O).
+- Instead of blocking the entire program while waiting, coroutines let other code run.
+
+### asyncio
+- asyncio is Python’s built-in library to work with coroutines.
+- It provides an event loop that manages and schedules coroutines.
+
+```
+import asyncio
+
+async def say_after(delay, message):
+    await asyncio.sleep(delay)  # simulate I/O or delay
+    print(message)
+
+async def main():
+    print("Started")
+    # Run two coroutines concurrently
+    task1 = asyncio.create_task(say_after(2, "Hello"))
+    task2 = asyncio.create_task(say_after(1, "World"))
+    
+    await task1
+    await task2
+    print("Finished")
+
+asyncio.run(main())
+
+```
+
+- Coroutines are Python functions that can pause and resume execution, enabling asynchronous programming. Using async and await, they allow non-blocking code, especially useful for I/O-bound tasks.
+
+- asyncio is Python's standard library to manage coroutines via an event loop, scheduling multiple async tasks concurrently for efficient execution.
+  
+
+
+
+
+
+
+
+
+
+
 
 
 
