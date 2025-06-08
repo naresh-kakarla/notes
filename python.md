@@ -13,6 +13,7 @@
 - [Meta Class](#meta-class)
 - [Coroutines and asyncio](#coroutines-and-asyncio)
 - [Duck Typing and EAFP vs LBYL](#duck-typing-and-eafp-vs-lbyl)
+- [Typing and Type hints](#typing-and-type-hints)
   
 
 ## Descriptors
@@ -718,44 +719,43 @@ except FileNotFoundError:
 ```
 - Python generally encourages EAFP — it's more pythonic and leads to cleaner and faster code in many cases.
 
+## Typing and Type hints
+Typing and Type Hints in Python, introduced in PEP 484, allow developers to optionally specify the types of variables, function arguments, and return values. Although Python is a dynamically typed language, type hints provide a way to add static typing without changing the runtime behavior.
 
+```
+def greet(name: str, age: int) -> str:
+    return f"Hello {name}, you are {age}"
+```
 
+This doesn't enforce types at runtime, but it helps tools like mypy or IDEs to catch type-related bugs early, improve code readability, and offer better auto-completion and documentation.
 
+The standard library provides the typing module with constructs like List, Dict, Tuple, Optional, Union, and Any to describe complex types.
 
+Overall, type hints make Python code more maintainable, especially in large codebases or team environments, while preserving Python's dynamic nature.
 
+**Example**
+```
+from typing import List, Tuple, Dict, Optional
 
+def greet(name: str, age: int) -> str:
+    return f"Hello {name}, you are {age}"
 
+def get_names() -> List[str]:
+    return ["Alice", "Bob"]
 
+def get_user() -> Optional[Dict[str, str]]:
+    return {"name": "Naresh"}  # or return None
+```
+**Common Types**
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+| Type                          | Meaning                                  |
+| ----------------------------- | ---------------------------------------- |
+| `int`, `str`, `float`, `bool` | Basic types                              |
+| `List[int]`                   | List of integers                         |
+| `Dict[str, int]`              | Dictionary with str keys and int values  |
+| `Tuple[str, int]`             | Tuple with specific types                |
+| `Optional[str]`               | `str` or `None`                          |
+| `Any`                         | Any type                                 |
+| `Union[int, str]`             | Can be `int` or `str`                    |
+| `Callable[[int, int], int]`   | Function taking 2 ints and returning int |
 
