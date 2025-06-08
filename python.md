@@ -8,7 +8,9 @@
 - [Multithreading](#multithreading)
 - [Thread Deadlock](#thread-deadlock)
 - [Closure and Scope](#closure-and-scope)
-
+- [Decorator](#decorator)
+- Generators and Iterators(#generators-and-iterators)
+  
 
 ## Descriptors
 
@@ -385,6 +387,189 @@ Python uses LEGB rule to resolve variable names:
 |E| Enclosing	|In enclosing function (if nested)|
 |G|Global|	At the top level of the module
 |B|Built-in|	Keywords like len, print|
+
+
+## Decorator
+
+Decorator in Python is a function that takes another function as input, adds some additional behavior before and after the original function, and return the new function - without changing the original function code.
+
+It’s commonly used for logging, authentication, performance tracking, etc.
+
+**Definatio**
+```
+def my_decorator(func):             # Step 1: Accept a function
+    def wrapper(*args, **kwargs):   # Step 2: Define a wrapper
+        print("Before Execution")
+        result = func(*args, **kwargs)  # Step 3: Call original function
+        print("After Execution")
+        return result
+    return wrapper                  # Step 4: Return the wrapper
+```
+
+**Usage**
+```
+@my_decorator
+def original_fun(a, b):
+    return a + b
+
+print(original_fun(10, 5))
+```
+### Decorator with Parameters
+
+Normally, a decorator takes a function as an argument.
+But when we want to pass extra arguments to the decorator (like config or flag) we need to add extra outer function layer.
+
+**Structure:**
+```
+def decorator_with_args(arg1, arg2):
+    def actual_decorator(func):
+        def wrapper(*args, **kwargs):
+            # use arg1, arg2 inside
+            return func(*args, **kwargs)
+        return wrapper
+    return actual_decorator
+```
+
+**Example:**
+
+```
+def log(level):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            print(f"[{level}] - Executing {func.__name__}")
+            result = func(*args, **kwargs)
+            print(f"[{level}] - Done executing {func.__name__}")
+            return result
+        return wrapper
+    return decorator
+
+@log("INFO")
+def say_hello(name):
+    print(f"Hello, {name}")
+
+@log("DEBUG")
+def add(a, b):
+    return a + b
+
+```
+
+### Class-Based Decorator:
+
+A class-based decorator is a class with a __call__ method, which lets it wrap a function and run extra code before or after the function runs. It’s useful when we want to track state or make decorators that need more structure.
+
+```
+class MyDecorator:
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        print("Before function call")
+        result = self.func(*args, **kwargs)
+        print("After function call")
+        return result
+
+@MyDecorator
+def greet(name):
+    print(f"Hello, {name}!")
+
+greet("Name")
+
+```
+
+**Class-Based Decorator with Parameters**
+```
+class Repeat:
+    def __init__(self, times):
+        self.times = times
+
+    def __call__(self, func):
+        def wrapper(*args, **kwargs):
+            for _ in range(self.times):
+                func(*args, **kwargs)
+        return wrapper
+
+@Repeat(3)
+def laugh():
+    print("Ha ha!")
+
+laugh()
+```
+
+## Generators and Iterators
+
+### Iterators: 
+An iterator is an object in Python that implements:
+ - __iter__() `->` returns the iterator object itself
+ - __next__() `->` returns the next value or raises StopIteration
+   
+It allows traversing through all the elements of a collection one at a time. Calling next() on an iterator returns the next item, and raises a StopIteration exception when there are no more items. Iterators can be used explicitly or implicitly in loops.
+
+```
+my_list = [10, 20, 30]
+it = iter(my_list)       # Get iterator from list
+
+print(next(it))          # Output: 10
+print(next(it))          # Output: 20
+print(next(it))          # Output: 30
+# next(it) now would raise StopIteration
+
+```
+
+**Custom Iterator:**
+```
+class MyCounter:
+    def __init__(self, max_value):
+        self.max_value = max_value
+        self.current = 0
+    
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        if self.current < self.max_value:
+            value = self.current
+            self.current +=1
+            return value
+        else:
+            raise StopIteration
+
+counter = MyCounter(3)
+
+iterator = iter(counter)
+print(next(iterator))
+
+
+for value in MyCounter(3):
+    print(value)
+```
+    
+
+### Generators:
+
+A generator is a simple way to create an iterator using a function with yield. Instead of giving all values at once, it gives one value at a time and remembers where it left off. This saves memory, especially for big data.
+
+When the function runs, it pauses at each yield and resumes next time it’s called.
+
+```
+def count_up_to(n):
+    i = 1
+    while i <= n:
+        yield i            # Yield value and pause
+        i += 1
+
+gen = count_up_to(3)
+
+print(next(gen))          # Output: 1
+print(next(gen))          # Output: 2
+print(next(gen))          # Output: 3
+# next(gen) now raises StopIteration
+```
+
+
+
+
+
+
 
 
 
