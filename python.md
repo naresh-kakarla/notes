@@ -12,6 +12,7 @@
 - [Generators and Iterators](#generators-and-iterators)
 - [Meta Class](#meta-class)
 - [Coroutines and asyncio](#coroutines-and-asyncio)
+- [Duck Typing and EAFP vs LBYL](#duck-typing-and-eafp-vs-lbyl)
   
 
 ## Descriptors
@@ -652,8 +653,70 @@ asyncio.run(main())
 - asyncio is Python's standard library to manage coroutines via an event loop, scheduling multiple async tasks concurrently for efficient execution.
   
 
+## Duck Typing and EAFP vs LBYL
+
+### Duck Typing:
+
+Duck Typing is a concept where the type of an object is determined by its behavior (methods or properties), not its actual class. doesn't care what type an object is — it only cares if it can do what’s needed.
+
+`If it walks like a duck and quacks like a duck, it's a duck.` If it can walk like a duck and quack like a duck, Python will treat it as a duck — even if it’s not actually a duck.
+
+This gives Python flexibility and supports dynamic and clean code.
+
+```
+def pour_water(container):
+    container.pour()
+
+class Bottle:
+    def pour(self):
+        print("Pouring from bottle")
+
+class Coconut:
+    def pour(self):
+        print("Pouring from coconut")
+
+pour_water(Bottle())
+pour_water(Coconut())  # works even though it's not a Bottle
+```
+
+EAFP and LBYL These are two different programming styles.
+
+### EAFP: Easier to Ask Forgiveness than Permission
+- Assume everything will work — and handle exceptions if it doesn’t.
+
+```
+# EAFP
+try:
+    print(my_dict["key"])
+except KeyError:
+    print("Key not found.")
+```
 
 
+### LBYL: Look Before You Leap
+- Check first, then act.
+
+```
+# LBYL
+if "key" in my_dict:
+    print(my_dict["key"])
+else:
+    print("Key not found.")
+```
+
+**Example**
+```
+# LBYL with race condition
+if os.path.exists("data.txt"):
+    open("data.txt")  # Someone might delete it right after the check
+
+# EAFP avoids that
+try:
+    open("data.txt")
+except FileNotFoundError:
+    print("File not found.")
+```
+- Python generally encourages EAFP — it's more pythonic and leads to cleaner and faster code in many cases.
 
 
 
