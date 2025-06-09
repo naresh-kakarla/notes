@@ -18,6 +18,7 @@
 - [Custom User Model & AbstractBaseUser](#custom-user-model--abstractbaseuser)
 - [LoginRequiredMixin and Permission Decorators in Django](#loginrequiredmixin-and-permission-decorators-in-django)
 - [Mixin in Django](#mixin-in-django)
+- [Django Forms vs ModelForms]()
 
 
 ## Django Project vs Django App
@@ -766,6 +767,37 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = "dashboard.html"
 
 ```
+
+## Django Forms vs ModelForms 
+
+**- A Django Form is a class that helps in creating and validating HTML forms in a clean and Pythonic way.**
+
+```
+from django import forms
+
+class ContactForm(forms.Form):
+    name = forms.CharField(max_length=100)
+    email = forms.EmailField()
+    message = forms.CharField(widget=forms.Textarea)
+```
+
+**- A ModelForm is a helper class that automatically creates a form based on a Django Model.**
+
+```
+from django.forms import ModelForm
+from .models import Contact
+
+class ContactModelForm(ModelForm):
+    class Meta:
+        model = Contact
+        fields = ['name', 'email', 'message']
+```
+
+## Django Model Manager & QuerySet Customization
+
+
+
+
 
 
 
