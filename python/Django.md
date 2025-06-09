@@ -7,6 +7,10 @@
 - [Web Server, Web Server Gateway Interface (WSGI) and Web Application](#web-server-web-server-gateway-interface-wsgi-and-web-application)
 - [settings.py, urls.py, wsgi.py, asgi.py](#settingspy-urlspy-wsgipy-asgipy)
 - [View (FBV vs CBV)](#view-fbv-vs-cbv)
+- [Django URL Routing and Path Converters](#django-url-routing-and-path-converters)
+- [Django Models & ORM (Fields, Relationships, Queries)](#django-models--orm-fields-relationships-queries)
+- [Django Admin Interface](#django-admin-interface)
+- [Migrations in Django](#migrations-in-django)
 
 
 ## Django Project vs Django App
@@ -198,5 +202,278 @@ uvicorn myproject.asgi:application --workers 4 --host 0.0.0.0 --port 8000
 
 ## View (FBV vs CBV)
 
+In Django, a View is the part of the application that handles the request and returns a response. Views define what should happen when a user accesses a certain URL.
 
-## 
+There are two types of views in Django:
+
+### 1. Function-Based Views (FBV):
+
+- These are simple Python functions.
+- manually check the request method (GET, POST, etc.).
+- Easy to read and good for simple logic.
+  
+**Use FBV when:**
+- The logic is simple
+- You need full control over the flow
+- Readability is more important than reusability
+
+  **Example**
+```
+  from django.http import HttpResponse
+
+  def my_view(request):
+    if request.method == 'GET':
+        return HttpResponse("GET request")
+    elif request.method == 'POST':
+        return HttpResponse("POST request")
+```
+
+### 2. Class-Based Views (CBV):
+
+- These are Python classes that use inheritance from Django’s view classes.
+- Django handles HTTP methods with class methods like get(), post(), etc.
+- CBVs offer built-in generic views for common patterns (like ListView, DetailView, etc.)
+- Good for reusability, extensibility, and DRY (Don’t Repeat Yourself) principles.
+
+**Use CBV when:**
+
+- You have complex views
+- You want to reuse logic or extend behavior
+- You're building CRUD operations with less boilerplate
+
+
+
+**Example**
+```
+from django.http import HttpResponse
+from django.views import View
+
+class MyView(View):
+    def get(self, request):
+        return HttpResponse("GET request")
+
+    def post(self, request):
+        return HttpResponse("POST request")
+
+```
+
+## Django URL Routing and Path Converters
+
+In Django, URL routing is used to map incoming request URLs to the appropriate view functions or classes.
+
+The mappings are defined in the urls.py file using path() or re_path() functions.
+
+```
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('hello/', views.hello_view),  # maps /hello/ to hello_view
+]
+
+```
+
+### What are Path Converters?
+
+Path converters allow you to capture dynamic parts of the URL and pass them as arguments to the view function.
+
+They help in extracting values like integers, strings, slugs, UUIDs, etc., from the URL.
+
+```
+# urls.py
+from django.urls import path
+from .views import UserDetailView
+
+urlpatterns = [
+    path('user/<int:user_id>/', UserDetailView.as_view(), name='user-detail'),
+]
+```
+```
+# views.py
+from django.http import JsonResponse
+from django.views import View
+
+class UserDetailView(View):
+    def get(self, request, user_id):
+        # You can use user_id to fetch user data
+        return JsonResponse({"message": f"User ID is {user_id}"})
+```
+
+## Django Models & ORM (Fields, Relationships, Queries)
+
+### Model:
+
+- In Django, a Model is a Python class that defines the structure of your database table.
+- Each model class maps to a table, and each attribute maps to a column.
+- You define validations and constraints using Django’s built-in field types like CharField, IntegerField, DateField, etc.
+
+**Example**
+```
+class Book(models.Model):
+    title = models.CharField(max_length=100)
+    published = models.DateField()
+
+```
+
+### Django ORM (Object Relational Mapper):
+
+- Django ORM allows you to interact with the database using Python code instead of raw SQL.
+- It maps Python objects to database tables, hence "Object Relational Mapper".
+- You can create, read, update, and delete records using simple Python methods.
+
+**Example**
+
+```
+# Create
+Book.objects.create(title="Django Guide", published="2024-01-01")
+
+# Read
+book = Book.objects.get(id=1)
+
+# Filter
+books = Book.objects.filter(title__icontains="django")
+
+# Update
+book.title = "Updated Title"
+book.save()
+
+# Delete
+book.delete()
+```
+### Model Relationships:
+Django models support relationships between tables using:
+
+| Relationship Type | Field Used        | Meaning                                 |
+| ----------------- | ----------------- | --------------------------------------- |
+| One-to-Many       | `ForeignKey`      | Many books can be written by one author |
+| One-to-One        | `OneToOneField`   | One user has one profile                |
+| Many-to-Many      | `ManyToManyField` | A student can take many courses         |
+
+
+**Examples**
+
+**One-to-Many (ForeignKey)**
+
+```
+class Author(models.Model):
+    name = models.CharField(max_length=50)
+
+class Book(models.Model):
+    title = models.CharField(max_length=100)
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+
+```
+
+**One-to-One (OneToOneField)**
+
+```
+class User(models.Model):
+    name = models.CharField(max_length=100)
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    bio = models.TextField()
+
+```
+
+**Many-to-Many (ManyToManyField)**
+
+```
+class Course(models.Model):
+    name = models.CharField(max_length=100)
+
+class Student(models.Model):
+    name = models.CharField(max_length=100)
+    courses = models.ManyToManyField(Course)
+```
+
+In Django, Models define the structure of your database using Python classes. Django ORM lets you interact with those models using Python instead of SQL. You can define fields, relationships (like foreign keys), and perform queries easily using object methods like filter(), get(), create(), etc.
+
+
+## Django Admin Interface
+
+Django Admin is a powerful web UI to manage your database records. It’s auto-generated but highly customizable using ModelAdmin class. You can control what fields are shown, searchable, or filterable, and even manage related models inline.
+
+Django provides a built-in admin panel that lets developers manage models (database tables) using a web interface — without writing any frontend code.
+
+**To use the admin panel:**
+
+1. Register your model in admin.py of the app.
+
+```
+from django.contrib import admin
+from .models import Product
+
+admin.site.register(Product)
+```
+2. Visit /admin in your browser and log in with your superuser account.
+
+**Why Customize Admin Interface?**
+
+The default admin is basic. We customize it to:
+
+    - Show specific fields in list view
+    - Add search and filters
+    - Group fields in sections
+    - Show related models inline
+
+**Common Customizations**
+```
+from django.contrib import admin
+from .models import Product
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ('name', 'price', 'in_stock')  # columns in list view
+    search_fields = ('name',)                     # search box
+    list_filter = ('in_stock',)                   # right-side filters
+    ordering = ('-created_at',)                   # order by latest
+
+```
+**Inline Admin for Related Models**
+```
+class CommentInline(admin.TabularInline):
+    model = Comment
+
+class BlogAdmin(admin.ModelAdmin):
+    inlines = [CommentInline]
+```
+
+## Migrations in Django
+Migrations in Django track changes to your models and sync them with the database.
+makemigrations generates migration files, and migrate applies those changes to the actual DB.
+
+**Two-Step Process:**
+
+**makemigrations**
+
+  &#8594; Command: python manage.py makemigrations
+  
+  &#8594; This scans your models.py files and creates migration files (Python code) that describe what changes should happen in the database.
+
+**migrate**
+
+  &#8594; Command: python manage.py migrate
+  
+  &#8594; This reads those migration files and executes the SQL queries to apply those changes to your database.
+
+**Simple Analogy:**
+
+ makemigrations `->` like drafting the plan (writes what should change)
+
+ migrate `->` like executing the plan (applies changes in DB)
+
+ **Examples**
+```
+python manage.py makemigrations
+# Output: Created migration 0002_add_email_to_user
+
+python manage.py migrate
+# Output: Applying 0002_add_email_to_user... OK
+
+```
+
+```
+python manage.py sqlmigrate yourapp 0002
+
+```
