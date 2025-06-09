@@ -12,6 +12,10 @@
 - [Django Admin Interface](#django-admin-interface)
 - [Migrations in Django](#migrations-in-django)
 - [Template Engine(Filters, Inheritance, Context)](#template-enginefilters-inheritance-context)
+- [Static Files vs Media Files](#static-files-vs-media-files)
+- [render() vs redirect() vs HttpResponse](#render-vs-redirect-vs-httpresponse)
+- [Built-in User Authentication System](#built-in-user-authentication-system)
+- [Custom User Model & AbstractBaseUser](#custom-user-model--abstractbaseuser)
 
 
 ## Django Project vs Django App
@@ -537,3 +541,187 @@ def my_view(request):
   <h1>Welcome Home!</h1>
 {% endblock %}
 ```
+
+## Static Files vs Media Files:
+
+**Static Files**: Static files are assets like CSS, JavaScript, and images that do not change per user or request.
+
+- Typically stored in each app’s static/ directory and collected via collectstatic.
+
+```
+# settings.py
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / "static"]
+```
+```
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/styles.css' %}">
+<img src="{% static 'images/logo.png' %}">
+```
+
+
+**Media Files:** Media files are user-uploaded content such as profile pictures, documents, or attachments.
+
+- Uploaded to MEDIA_ROOT, and served from MEDIA_URL.
+
+```
+# settings.py
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+```
+
+```
+<img src="{{ user.profile_picture.url }}">
+```
+```
+# urls.py
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+```
+
+## render() vs redirect() vs HttpResponse
+
+### render():  
+Combines a template with a context dictionary and returns an HttpResponse object with the rendered text.
+
+```
+from django.shortcuts import render
+
+def home_view(request):
+    return render(request, 'home.html', {'name': 'Naresh'})
+```
+
+### redirect():
+Returns an HttpResponseRedirect to the specified URL or view name.
+
+```
+from django.shortcuts import redirect
+
+def login_success(request):
+    return redirect('dashboard')  # or use a URL path
+```
+
+### HttpResponse:
+ Returns a custom raw HTTP response (plain text, JSON, HTML, XML, etc.).
+
+```
+from django.http import HttpResponse
+
+def simple_response(request):
+    return HttpResponse("Hello, this is raw response text")
+```
+
+**Summary**
+
+- Use **render()** to serve HTML pages with dynamic data.
+
+- Use **redirect()** to send users to a different URL after an action.
+
+- Use **HttpResponse** when you need full control over the response, such as sending raw content or JSON (or for custom headers/status).
+
+## Built-in User Authentication System
+
+Django's built-in authentication system simplifies user management, offering secure login, logout, session control, and permission handling out of the box—ideal for both small and large applications.
+
+**Core Features:**
+- User registration and login/logout
+- Password hashing and validation
+- Session management
+- User groups and permissions
+- Authentication decorators/mixins (@login_required, LoginRequiredMixin)
+- Admin integration for managing users
+
+**Default User model includes:**
+
+- username, password, email
+- is_active, is_staff, is_superuser
+- first_name, last_name
+
+**Common Usage:**
+
+```
+from django.contrib.auth import authenticate, login, logout
+
+# Authenticate user
+user = authenticate(request, username='naresh', password='secret')
+if user is not None:
+    login(request, user)  # Log the user in
+else:
+    # Invalid credentials
+    pass
+
+# Logout
+logout(request)
+```
+
+## Custom User Model & AbstractBaseUser
+Django lets you fully customize the user model using AbstractBaseUser. This is useful when you want to store additional user info or change the login mechanism (like using email instead of username). You define your own fields, authentication rules, and manager logic.
+
+**Default User model includes:**
+
+- username, password, email
+- is_active, is_staff, is_superuser
+- first_name, last_name
+
+
+**How to Do It?**
+
+**Step 1: Inherit from AbstractBaseUser and PermissionsMixin**
+
+```
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.db import models
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("Email is required")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)  # hashes password
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        return self.create_user(email, password, **extra_fields)
+
+class CustomUser(AbstractBaseUser, PermissionsMixin):
+    email = models.EmailField(unique=True)
+    first_name = models.CharField(max_length=30)
+    last_name = models.CharField(max_length=30)
+    mobile_number = models.CharField(max_length=15, blank=True, null=True)
+
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+
+    objects = CustomUserManager()
+
+    USERNAME_FIELD = 'email'  # login with email
+    REQUIRED_FIELDS = ['first_name', 'last_name']  # prompted in createsuperuser
+```
+**Step 2: Update settings.py**
+
+```
+AUTH_USER_MODEL = 'yourapp.CustomUser'
+```
+
+**Step 3: Run migrations**
+
+```
+python manage.py makemigrations
+python manage.py migrate
+```
+
+
+
+
+
+
+
+
+
