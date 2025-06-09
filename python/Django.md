@@ -11,6 +11,7 @@
 - [Django Models & ORM (Fields, Relationships, Queries)](#django-models--orm-fields-relationships-queries)
 - [Django Admin Interface](#django-admin-interface)
 - [Migrations in Django](#migrations-in-django)
+- [Template Engine(Filters, Inheritance, Context)](#template-enginefilters-inheritance-context)
 
 
 ## Django Project vs Django App
@@ -476,4 +477,63 @@ python manage.py migrate
 ```
 python manage.py sqlmigrate yourapp 0002
 
+```
+
+## Template Engine(Filters, Inheritance, Context)
+
+The template engine in Django allows you to dynamically generate HTML by mixing static HTML with dynamic data passed from the backend. It uses a syntax similar to Jinja.
+
+Django Template Engine allows rendering dynamic HTML pages using context data, filters to format output, and template inheritance to keep layouts clean and reusable.
+
+### Components
+
+**1. Context**
+- It's a dictionary of dynamic data that you pass from your view to the template.
+- This data is used to render the page.
+
+```
+def my_view(request):
+    context = {"name": "Naresh", "age": 30}
+    return render(request, "profile.html", context)
+```
+```
+<!-- profile.html -->
+<h1>{{ name }}</h1>
+<p>Age: {{ age }}</p>
+
+```
+
+**2. Template Filters**
+- Filters are used to modify variables in templates.
+- Syntax: {{ value|filter_name }}
+
+**Common filters:**
+
+- {{ name|lower }} → convert to lowercase
+- {{ list|length }} → get length of a list
+- {{ date|date:"Y-m-d" }} → format date
+
+**3. Template Inheritance**
+
+- Allows you to create a base layout and reuse it in other templates.
+- Promotes DRY (Don't Repeat Yourself) principle.
+
+```
+<!-- base.html -->
+<html>
+  <head><title>{% block title %}My Site{% endblock %}</title></head>
+  <body>
+    <header>Header Section</header>
+    {% block content %}{% endblock %}
+    <footer>Footer</footer>
+  </body>
+</html>
+```
+```
+<!-- home.html -->
+{% extends "base.html" %}
+{% block title %}Home Page{% endblock %}
+{% block content %}
+  <h1>Welcome Home!</h1>
+{% endblock %}
 ```
