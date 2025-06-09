@@ -16,6 +16,8 @@
 - [render() vs redirect() vs HttpResponse](#render-vs-redirect-vs-httpresponse)
 - [Built-in User Authentication System](#built-in-user-authentication-system)
 - [Custom User Model & AbstractBaseUser](#custom-user-model--abstractbaseuser)
+- [LoginRequiredMixin and Permission Decorators in Django](#loginrequiredmixin-and-permission-decorators-in-django)
+- [Mixin in Django](#mixin-in-django)
 
 
 ## Django Project vs Django App
@@ -717,6 +719,53 @@ python manage.py makemigrations
 python manage.py migrate
 ```
 
+## LoginRequiredMixin and Permission Decorators in Django
+
+Django provides both LoginRequiredMixin for class-based views and @login_required for function-based views to restrict access to authenticated users. For more fine-grained access control, @permission_required checks if the user has specific permissions. These tools are key for securing routes in Django applications.
+
+**LoginRequiredMixin (used in Class-Based Views):**
+
+- Ensures a user is logged in to access a Function-Based View.
+
+```
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+
+@login_required(login_url='/login/')
+def profile_view(request):
+    return render(request, 'profile.html')
+```
+
+**@permission_required decorator:**
+
+- Checks whether the logged-in user has a specific permission (like app_label.permission_code).
+  
+```
+from django.contrib.auth.decorators import permission_required
+
+@permission_required('blog.add_post', raise_exception=True)
+def add_post(request):
+    # user must have 'add_post' permission in 'blog' app
+    pass
+```
+- raise_exception=True returns HTTP 403 if permission is denied.
+
+## Mixin in Django
+
+A Mixin is a reusable class in Python or Django that provides additional functionality to other classes through multiple inheritance, without being a standalone class on its own.
+
+- A mixin doesn't define a full view or class — it only "mixes in" extra behavior.
+
+- Commonly used in Class-Based Views (CBVs) in Django to add modular, reusable logic like authentication, permissions, or logging.
+
+```
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import TemplateView
+
+class DashboardView(LoginRequiredMixin, TemplateView):
+    template_name = "dashboard.html"
+
+```
 
 
 
