@@ -18,7 +18,12 @@
 - [Custom User Model & AbstractBaseUser](#custom-user-model--abstractbaseuser)
 - [LoginRequiredMixin and Permission Decorators in Django](#loginrequiredmixin-and-permission-decorators-in-django)
 - [Mixin in Django](#mixin-in-django)
-- [Django Forms vs ModelForms]()
+- [Django Forms vs ModelForms](#django-forms-vs-modelforms)
+- [Model Manager & QuerySet Customization](#model-manager--queryset-customization)
+- [Middleware](#middleware)
+- [Settings Management(DEBUG, ALLOWED_HOSTS, ENV handling)](#settings-managementdebug-allowed_hosts-env-handling)
+- [CSRF Protection](#csrf-protection)
+- [Transactions and atomic()](#transactions-and-atomic)
 
 
 ## Django Project vs Django App
@@ -793,16 +798,366 @@ class ContactModelForm(ModelForm):
         fields = ['name', 'email', 'message']
 ```
 
-## Django Model Manager & QuerySet Customization
+## Model Manager & QuerySet Customization
+
+In Django, `objects` is the model manager, and .all() returns a `QuerySet`.
+The manager (objects) is the interface to database operations, and the `QuerySet` is the actual collection of records.
+We can customize the manager using `models.Manager` and customize the `QuerySet` using models.`QuerySet` to add reusable filters or logic.
+
+**Example:**
+
+```
+from django.db import models
+from django.utils import timezone
+
+# Custom QuerySet
+class PostQuerySet(models.QuerySet):
+    def published(self):
+        return self.filter(status='published')
+    
+    def draft(self):
+        return self.filter(status='draft')
+
+# Custom Manager
+class PublishedManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(status='published')
+
+# Post Model
+class Post(models.Model):
+    STATUS_CHOICES = (
+        ('draft', 'Draft'),
+        ('published', 'Published'),
+    )
+
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(unique_for_date='publish')
+    body = models.TextField()
+    publish = models.DateTimeField(default=timezone.now)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
+
+    # Managers
+    objects = models.Manager()  # Default manager
+    published = PublishedManager()  # Custom manager
+    custom_qs = PostQuerySet.as_manager()  # QuerySet-based manager
+
+    class Meta:
+        ordering = ['-publish']
+
+    def __str__(self):
+        return self.title
+
+```
+
+**Usage**
+```
+# In views.py or Django shell
+
+# Get all posts
+posts = Post.objects.all()
+
+# Get all published posts
+published_posts = Post.published.all()
+
+# Get all draft posts
+draft_posts = Post.custom_qs.draft()
+```
+
+**QuerySet methods inside a Manager**
+
+To reuse custom QuerySet methods inside a custom Manager without using .as_manager(), override the Manager’s get_queryset() to return your custom QuerySet and delegate methods explicitly to it.
+
+```
+class PostQuerySet(models.QuerySet):
+    def published(self):
+        return self.filter(status='published')
+
+class PublishedManager(models.Manager):
+    def get_queryset(self):
+        return PostQuerySet(self.model, using=self._db)
+
+    def published(self):
+        # Delegate to the queryset method
+        return self.get_queryset().published()
+```
 
 
+**Summary**
+A QuerySet defines how data is fetched, filtered, or modified. A Manager is the interface to call those methods on the model. By using as_manager(), we expose custom QuerySet logic through the manager, enabling clean and reusable queries.
 
 
+## Django Signals
+
+Django signals allow decoupled applications to get notified when certain events occur in the system. It's a way to execute side effects (like sending emails or creating related models) automatically when something happens—like saving or deleting a model instance.
+
+The most common built-in signals are:
+
+- `pre_save`: Triggered before a model's save() method is called.
+- `post_save`: Triggered after a model's save() method is successfully called.
+- `pre_delete`, `post_delete`, etc.
+
+This promotes cleaner and modular code by separating logic from the model itself.
+
+| Concept     | Description                                     |
+| ----------- | ----------------------------------------------- |
+| `Signal`    | The event (e.g., `post_save`, `pre_save`)       |
+| `Receiver`  | The function that responds to the event         |
+| `@receiver` | Decorator that links the signal to the function |
+| `apps.py`   | Hooks the signal setup into Django app startup  |
+
+**Example: Automatically Create a Profile When a User is Created**
 
 
+**models.py**
+
+```
+from django.db import models
+from django.contrib.auth.models import User
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    bio = models.TextField(blank=True)
+
+```
+
+**signals.py**
+```
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.contrib.auth.models import User
+from .models import Profile
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)
+
+```
+
+**apps.py**
+
+```
+from django.apps import AppConfig
+
+class MyAppConfig(AppConfig):
+    name = 'myapp'
+
+    def ready(self):
+        import myapp.signals
+
+```
+
+**Summary**
+
+Django signals are a way to trigger actions automatically when model events happen, like creating a profile after a user registers using post_save. This keeps code clean, modular, and decoupled.
 
 
+## Middleware
+
+Middleware in Django is a framework-level hook that allows you to process requests and responses globally before they reach the view or after the response is returned. It's useful for tasks like authentication, logging, session management, and more.
+
+- Django comes with built-in middleware like `AuthenticationMiddleware`, `SecurityMiddleware`, etc.
+- Middleware components are chained together, and each middleware can modify the request or response.
+- You can also create custom middleware to implement your own logic.
 
 
+**Structure of Middleware (Very Basic)**
+
+```
+class MyMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response  # called once at startup
+
+    def __call__(self, request):
+        # Code before view (before the chef cooks)
+        response = self.get_response(request)
+        # Code after view (after food is served)
+        return response
+
+```
+
+**Example 1: Timer Middleware (Logging how long a view takes)**
+
+```
+import time
+
+class TimerMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        start = time.time()
+        response = self.get_response(request)
+        duration = time.time() - start
+        print(f"{request.path} took {duration:.2f}s to process")
+        return response
+
+```
+
+**Example 2: Block Specific IP**
+
+```
+from django.http import HttpResponseForbidden
+
+class BlockIPMiddleware:
+    BLOCKED_IPS = ['123.123.123.123']
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        ip = request.META.get('REMOTE_ADDR')
+        if ip in self.BLOCKED_IPS:
+            return HttpResponseForbidden("Your IP is blocked.")
+        return self.get_response(request)
+
+```
+
+**How to Activate**
+
+Add to your Django settings.py:
+
+```
+MIDDLEWARE = [
+    # other middleware...
+    'myapp.middleware.TimerMiddleware',
+    'myapp.middleware.BlockIPMiddleware',
+]
+```
+
+## Settings Management(DEBUG, ALLOWED_HOSTS, ENV handling)
+
+Django’s settings.py is the central configuration file for managing the behavior of your Django project. It contains everything from database configuration to middleware, installed apps, and security settings.
+
+**DEBUG**
+
+- Controls whether Django shows detailed error pages.
+- Should be True only in development.
+- Set to `False` in production to avoid exposing sensitive information.
+
+**ALLOWED_HOSTS**
+
+- A list of host/domain names that this Django site can serve.
+- Required when DEBUG = False.
+- Prevents HTTP Host header attacks.
+
+`Example:`
+
+```
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'yourdomain.com']
+```
+
+**Environment Variable Handling**
+
+- Used to manage sensitive info like API keys, DB credentials, or secret keys.
+- Recommended to use the os.environ module or third-party libraries like python-decouple or django-environ.
+
+**Example using os.environ:**
+
+```
+import os
+
+DEBUG = os.environ.get("DEBUG", "False") == "True"
+SECRET_KEY = os.environ.get("SECRET_KEY", "your-default-key")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
+
+```
+
+## CSRF Protection
+
+CSRF (Cross-Site Request Forgery) is a security vulnerability where an attacker tricks a user’s browser into submitting unauthorized requests to a web application where the user is authenticated.
+
+Django’s CSRF protection prevents this by requiring a token (a unique secret value) to be sent with any POST, PUT, DELETE, or PATCH requests that modify data. This token is verified on the server side to ensure the request is legitimate and originated from the trusted site.
+
+**How Django Implements CSRF Protection:**
+- Uses a middleware called CsrfViewMiddleware that checks incoming requests.
+- For HTML forms, Django templates provide a {% csrf_token %} tag to include the token in forms.
+- For AJAX requests, the token is included in headers or request data.
+- If the token is missing or incorrect, Django raises a 403 Forbidden error.
+
+**Disable CSRF Protection (Not Recommended for Production):**
+
+You might disable CSRF protection temporarily or for specific views in some scenarios
+
+**1. Disabling globally (not recommended):**
+
+```
+# In settings.py
+MIDDLEWARE = [
+    # Remove or comment out
+    # 'django.middleware.csrf.CsrfViewMiddleware',
+    # other middleware...
+]
+
+```
+
+**2. Disabling for a specific view:**
+
+```
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def my_view(request):
+    # your view logic
+```
+
+## Transactions and atomic()
+
+### Transaction
+
+A transaction is a sequence of database operations that must be executed completely or not at all. It ensures data integrity by treating a group of operations as a single unit.
+
+### Why Transactions?
+
+`Without transactions:` If one DB operation fails, previous operations still persist, leads to inconsistent state.
+
+`With transactions:` All operations succeed together, or none are applied if there's an error.
+
+### atomic() in Django
+
+Django provides transaction.atomic() to manage database transactions safely and easily.
 
 
+```
+from django.db import transaction
+
+def create_order(request):
+    with transaction.atomic():
+        order = Order.objects.create(user=request.user)
+        Payment.objects.create(order=order, amount=100)
+        # If something goes wrong, both creations are rolled back
+
+```
+
+- If any exception occurs inside the atomic() block, all changes are rolled back automatically.
+
+
+**Example with Exception:**
+
+```
+from django.db import transaction
+
+def create_profile_and_wallet(user_data, wallet_data):
+    try:
+        with transaction.atomic():
+            profile = Profile.objects.create(**user_data)
+            Wallet.objects.create(profile=profile, **wallet_data)
+            raise Exception("Unexpected error!")  # Will rollback both inserts
+    except Exception as e:
+        print("Error occurred:", e)
+
+```
+
+### Nested Transactions (Savepoints)
+
+- atomic() also supports nested transactions via savepoints:
+
+```
+with transaction.atomic():
+    # outer block
+    with transaction.atomic():
+        # inner block — can rollback separately
+
+```
